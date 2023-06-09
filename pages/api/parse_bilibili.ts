@@ -36,8 +36,10 @@ export default async function handler(
       isHD: !isOutDated,
       url: videoUrl,
     })
-  } catch (e) {
-    res.status(400).json(e.message);
+  } catch (err) {
+    if (err instanceof Error) {
+      res.status(400).json(err.message);
+    }
   }
 }
 
