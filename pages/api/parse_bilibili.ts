@@ -8,6 +8,7 @@ type VideoInfo = {
   aid: string,
   cid: string,
   pic: string,
+  p: number,
 }
 
 type VideoBV = {
@@ -72,10 +73,10 @@ async function parseBV(url: URL): Promise<VideoBV> {
 
 async function getVideoInfo(bv: VideoBV): Promise<VideoInfo> {
   const response = await axios.get(`https://api.bilibili.com/x/web-interface/view?bvid=${bv.bvid}`);
-  const { title, bvid, aid, pic, pages } = response.data.data;
+  const { title, aid, pic, pages } = response.data.data;
   const pIndex = bv.p > 0 && bv.p <= pages.length ? bv.p - 1 : 0;
   const { cid } = pages[pIndex];
-  return { title, bvid, aid, pic, cid };
+  return { title, aid, pic, cid, ...bv, };
 }
 
 async function getVideoUrl(info: VideoInfo): Promise<string> {
