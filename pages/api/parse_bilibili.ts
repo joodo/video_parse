@@ -58,7 +58,7 @@ async function parseBV(url: URL): Promise<VideoBV> {
         throw new Error('Redirect short link error.');
       }
     case 'www.bilibili.com':
-      const regex = /BV(?<bvid>.*)$/;
+      const regex = /\/BV(?<bvid>[A-Za-z0-9]*)\/?/;
       const found = url.pathname.match(regex);
       if (found === null) throw new Error('No bv found in url');
       const { bvid } = found.groups!;
