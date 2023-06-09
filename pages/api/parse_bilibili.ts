@@ -33,6 +33,7 @@ export default async function handler(
     }
 
     res.status(200).json({
+      ...videoInfo,
       isHD: !isOutDated,
       url: videoUrl,
     })
