@@ -16,7 +16,7 @@ export default async function handler(
             { headers: { "Cookie": `SESSDATA=${sess}` } }
         );
         if (response.data.data.refresh) {
-            res.status(200).json('');
+            res.status(400).json('SESS out of date');
         } else {
             res.status(200).json(sess);
         }
