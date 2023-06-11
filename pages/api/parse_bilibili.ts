@@ -12,6 +12,11 @@ type VideoInfo = {
   totalP: number,
 }
 
+type UrlInfo = {
+  isHD: boolean,
+  urls: string[],
+}
+
 type VideoBV = {
   bvid: string,
   p: number,
@@ -21,23 +26,36 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  const { url } = req.query;
+  const { url, bvid, p } = req.query;
   try {
-    if (typeof url !== 'string') throw new Error('"url" param is required.');
+    let bv: VideoBV;
+    if (typeof url === 'string') {
+      bv = await parseBV(new URL(decodeURI(url)));
+    } else if (typeof bvid === 'string') {
+      bv = {
+        bvid,
+        p: parseInt(p?.toString() ?? 'NaN'),
+      }
+    } else {
+      throw new Error('"url" or "bvid" param is required.');
+    }
 
-    const bv = await parseBV(new URL(decodeURI(url)));
     const videoInfo = await getVideoInfo(bv);
-    const videoUrl = await getVideoUrl(videoInfo);
+    const videoUrls = await getVideoUrls(videoInfo);
 
     const isOutDated = await isLoginOutdated();
     if (isOutDated) {
-      // send email
+      // TODO: send email
+    }
+
+    const urlInfo: UrlInfo = {
+      isHD: !isOutDated,
+      urls: videoUrls,
     }
 
     res.status(200).json({
-      ...videoInfo,
-      isHD: !isOutDated,
-      url: videoUrl,
+      videoInfo,
+      urlInfo,
     })
   } catch (err) {
     if (err instanceof Error) {
@@ -81,13 +99,16 @@ async function getVideoInfo(bv: VideoBV): Promise<VideoInfo> {
   return { title, aid, pic, cid, totalP, ...bv, };
 }
 
-async function getVideoUrl(info: VideoInfo): Promise<string> {
+async function getVideoUrls(info: VideoInfo): Promise<string[]> {
   const response = await axios.get(
     `https://api.bilibili.com/x/player/playurl?avid=${info.aid}&cid=${info.cid}&qn=112`,
     { headers: { "Cookie": `SESSDATA=${process.env.SESSDATA}` } }
   );
-  const { url } = response.data.data.durl[0];
-  return url;
+  const durl = response.data.data.durl[0];
+  return [
+    durl['url'],
+    ...durl['backup_url'],
+  ];
 }
 
 async function isLoginOutdated() {
