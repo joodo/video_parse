@@ -92,6 +92,8 @@ async function parseBV(url: URL): Promise<VideoBV> {
 
 async function getVideoInfo(bv: VideoBV): Promise<VideoInfo> {
   const response = await axios.get(`https://api.bilibili.com/x/web-interface/view?bvid=${bv.bvid}`);
+  if (response.data['code'] != 0) throw new Error(`Cannot get video info: BV=${bv.bvid}, p=${bv.p}`);
+
   const { title, aid, pic, pages } = response.data.data;
   const totalP = pages.length;
   const pIndex = bv.p > 0 && bv.p <= totalP ? bv.p - 1 : 0;
