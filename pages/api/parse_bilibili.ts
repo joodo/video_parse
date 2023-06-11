@@ -107,10 +107,15 @@ async function getVideoUrls(info: VideoInfo): Promise<string[]> {
     { headers: { "Cookie": `SESSDATA=${process.env.SESSDATA}` } }
   );
   const durl = response.data.data.durl[0];
-  return [
-    durl['url'],
-    ...durl['backup_url'],
-  ];
+  console.log(durl);
+  try {
+    return [
+      durl['url'],
+      ...durl['backup_url'],
+    ];
+  } catch (e) {
+    throw new Error(JSON.stringify(durl));
+  }
 }
 
 async function isLoginOutdated() {
