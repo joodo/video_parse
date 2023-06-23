@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { kv } from '@vercel/kv';
 import { JSDOM } from 'jsdom';
 import axios from 'axios';
+import querystring from 'querystring';
 
 type BiliHash = {
     SESSDATA: string,
@@ -50,8 +51,14 @@ export default async function handler(
 async function updateCookie(cookies: BiliHash): Promise<string> {
     const correspondPath = await getCorrespondPath();
     const csrf = await getRefreshCsrf(cookies.SESSDATA, correspondPath);
-    const newCookies = getNewCookie(cookies, csrf);
-    return '';
+
+    const newCookies = await getNewCookies(cookies, csrf);
+    console.info(`new cookie info: ${JSON.stringify(newCookies)}`);
+
+    await confirmNewCookies(cookies, newCookies);
+    await kv.hset('bilibili_cookies', newCookies);
+
+    return newCookies.SESSDATA;
 }
 
 async function getCorrespondPath(): Promise<string> {
@@ -91,26 +98,53 @@ async function getRefreshCsrf(sess: string, correspondPath: string): Promise<str
     return csrf;
 }
 
-async function getNewCookie(oldCookie: BiliHash, csrf: string): Promise<BiliHash> {
+async function getNewCookies(oldCookies: BiliHash, refresh_csrf: string): Promise<BiliHash> {
+    const payload = {
+        csrf: oldCookies.bili_jct,
+        refresh_csrf,
+        source: 'main_web',
+        refresh_token: oldCookies.refresh_token,
+    };
     const response = await axios.post(
         'https://passport.bilibili.com/x/passport-login/web/cookie/refresh',
-        {
-            csrf: oldCookie.bili_jct,
-            refresh_csrf: csrf,
-            source: 'main_web',
-            refresh_token: oldCookie.refresh_token,
-        },
-        { headers: { 'Cookie': `SESSDATA=${oldCookie.SESSDATA}` } },
+        querystring.stringify(payload),
+        { headers: { 'Cookie': `SESSDATA=${oldCookies.SESSDATA}` } },
     );
     if (response.data['code'] != 0) {
-        console.error(`failed to update cookie with sess ${oldCookie.SESSDATA}, bili_jct ${oldCookie.bili_jct}, refresh_token ${oldCookie.refresh_token}, csrf ${csrf}: ${JSON.stringify(response.data)}`);
+        console.error(`failed to update cookie with sess ${oldCookies.SESSDATA}, bili_jct ${oldCookies.bili_jct}, refresh_token ${oldCookies.refresh_token}, csrf ${refresh_csrf}: ${JSON.stringify(response.data)}`);
         throw new Error('Failed to update cookie.');
     }
 
-    console.log(response.headers['set-cookie']);
+    const { refresh_token } = response.data['data'];
+    const m = parseSetCookie(response.headers['set-cookie'] as string[]);
     return {
-        refresh_token: response.data['data']['refresh_token'],
-        SESSDATA: '',
-        bili_jct: '',
+        SESSDATA: m.get('SESSDATA')!,
+        bili_jct: m.get('bili_jct')!,
+        refresh_token,
     };
+}
+
+function parseSetCookie(headers: string[]): Map<string, string> {
+    let re = new Map();
+    headers.map(e => {
+        const record = e.split(';')[0].split('=');
+        re.set(record[0], record[1]);
+    });
+    return re;
+}
+
+async function confirmNewCookies(oldCookies: BiliHash, newCookies: BiliHash): Promise<void> {
+    const payload = {
+        csrf: newCookies.bili_jct,
+        refresh_token: oldCookies.refresh_token,
+    };
+    const response = await axios.post(
+        'https://passport.bilibili.com/x/passport-login/web/confirm/refresh',
+        querystring.stringify(payload),
+        { headers: { 'Cookie': `SESSDATA=${newCookies.SESSDATA}` } },
+    );
+    if (response.data['code'] != 0) {
+        console.error(`failed to confirm new cookie: ${JSON.stringify(response.data)}`);
+        throw new Error('Failed to confirm new cookie.');
+    }
 }
