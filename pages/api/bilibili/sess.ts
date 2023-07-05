@@ -15,11 +15,6 @@ export default async function handler(
     res: NextApiResponse,
 ) {
     try {
-        const { key } = req.query;
-        if (key !== process.env.BUNGA_KEY) {
-            throw new Error('Wrong key.');
-        }
-
         const cookies = await kv.hgetall('bilibili_cookies') as BiliHash;
         const sess = cookies.SESSDATA;
 

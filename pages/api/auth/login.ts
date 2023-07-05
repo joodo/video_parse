@@ -14,10 +14,15 @@ export default async function handler(
     if (!user_id) return res.status(400).json('user_id field is required.');
 
     const serverClient = StreamChat.getInstance(api_key, api_secret);
-    const token = serverClient.createToken(user_id);
+    const user_token = serverClient.createToken(user_id);
     res.status(200).json({
-        token: 'no-token',
-        stream_key: api_key,
-        agora_key: process.env.AGORA_KEY,
+        api_token: 'no-token',
+        stream_io: {
+            key: api_key,
+            user_token,
+        },
+        agora_key: {
+            key: process.env.AGORA_KEY,
+        },
     });
 }
