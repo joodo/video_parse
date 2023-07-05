@@ -17,12 +17,7 @@ export default async function handler(
     const token = serverClient.createToken(user_id);
     res.status(200).json({
         token: 'no-token',
-        streamIO: {
-            appKey: api_key,
-            token,
-        },
-        agora: {
-            key: process.env.AGORA_KEY,
-        },
+        stream_key: api_key,
+        agora_key: process.env.AGORA_KEY,
     });
 }
