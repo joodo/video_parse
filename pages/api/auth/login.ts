@@ -9,20 +9,11 @@ export default async function handler(
 
     const api_key = process.env.STEAMIO_KEY!;
     const api_secret = process.env.STEAMIO_SECRET;
+    const serverClient = StreamChat.getInstance(api_key, api_secret);
 
     const user_id = req.body.user_id;
     if (!user_id) return res.status(400).json('user_id field is required.');
-
-    const serverClient = StreamChat.getInstance(api_key, api_secret);
     const user_token = serverClient.createToken(user_id);
-    res.status(200).json({
-        api_token: 'no-token',
-        stream_io: {
-            key: api_key,
-            user_token,
-        },
-        agora_key: {
-            key: process.env.AGORA_KEY,
-        },
-    });
+
+    res.status(200).json(user_token);
 }
